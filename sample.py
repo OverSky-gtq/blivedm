@@ -1,29 +1,20 @@
 # -*- coding: utf-8 -*-
 import asyncio
-import random
-
 import blivedm
 
 # 直播间ID的取值看直播间URL
-TEST_ROOM_IDS = [
-    12235923,
-    14327465,
-    21396545,
-    21449083,
-    23105590,
-]
+ROOM_ID = 21452505
 
 
 async def main():
-    await run_single_client()
-    await run_multi_clients()
+    room_id = ROOM_ID
+    await run_single_client(room_id)
 
 
-async def run_single_client():
+async def run_single_client(room_id):
     """
-    演示监听一个直播间
+    监听一个直播间
     """
-    room_id = random.choice(TEST_ROOM_IDS)
     # 如果SSL验证失败就把ssl设为False，B站真的有过忘续证书的情况
     client = blivedm.BLiveClient(room_id, ssl=True)
     handler = MyHandler()
@@ -31,44 +22,14 @@ async def run_single_client():
 
     client.start()
     try:
-        # 演示5秒后停止
-        await asyncio.sleep(5)
-        client.stop()
-
-        await client.join()
+        # 无限循环监听，直到手动停止程序
+        while True:
+            await asyncio.sleep(1)
     finally:
         await client.stop_and_close()
 
 
-async def run_multi_clients():
-    """
-    演示同时监听多个直播间
-    """
-    clients = [blivedm.BLiveClient(room_id) for room_id in TEST_ROOM_IDS]
-    handler = MyHandler()
-    for client in clients:
-        client.add_handler(handler)
-        client.start()
-
-    try:
-        await asyncio.gather(*(
-            client.join() for client in clients
-        ))
-    finally:
-        await asyncio.gather(*(
-            client.stop_and_close() for client in clients
-        ))
-
-
 class MyHandler(blivedm.BaseHandler):
-    # # 演示如何添加自定义回调
-    # _CMD_CALLBACK_DICT = blivedm.BaseHandler._CMD_CALLBACK_DICT.copy()
-    #
-    # # 入场消息回调
-    # async def __interact_word_callback(self, client: blivedm.BLiveClient, command: dict):
-    #     print(f"[{client.room_id}] INTERACT_WORD: self_type={type(self).__name__}, room_id={client.room_id},"
-    #           f" uname={command['data']['uname']}")
-    # _CMD_CALLBACK_DICT['INTERACT_WORD'] = __interact_word_callback  # noqa
 
     async def _on_heartbeat(self, client: blivedm.BLiveClient, message: blivedm.HeartbeatMessage):
         print(f'[{client.room_id}] 当前人气值：{message.popularity}')
